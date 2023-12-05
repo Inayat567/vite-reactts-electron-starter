@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import AppBar from './AppBar';
-
+import io from 'socket.io-client';
+const socket = io.connect('http://localhost:4000');
 function App() {
   console.log(window.ipcRenderer);
 
   const [isOpen, setOpen] = useState(false);
   const [isSent, setSent] = useState(false);
   const [fromMain, setFromMain] = useState<string | null>(null);
+  const [message, setMessage] = useState("");
 
   const handleToggle = () => {
     if (isOpen) {
@@ -26,12 +28,48 @@ function App() {
     setSent(true);
   };
 
+  const connectWithWhatsapp = () => {
+    socket.emit("send_message", { message: "message" });
+    console.warn("clicked");
+    // socket.on('receive_message', (data: any) => {
+    //   console.log(data);
+    //   setMessage(data.message);
+    // });
+    // if (window.Main) {
+    //   window.Main.connectWithWhatsApp('Connect with whatsapp');
+    // }
+  };
+
   useEffect(() => {
     if (isSent && window.Main)
       window.Main.on('message', (message: string) => {
         setFromMain(message);
       });
+
+    window.Main.on('connect', (message: string) => {
+      console.log(message + 'From Backend');
+    });
+
+    window.Main.on('socket', (message: string) => {
+      console.log(message + 'From Socket');
+    });
   }, [fromMain, isSent]);
+
+  useEffect(() => {
+    socket.on('connect', function () {
+      console.log('Connected');
+    });
+    socket.on('event', function (data: any) {
+      console.log('received event: ', data);
+    });
+    socket.on('receive_message', (data: any) => {
+      console.log(data);
+      setMessage(data.message);
+    });
+    socket.on('disconnect', function () {
+      console.log('Disconnected');
+    });
+  }, [socket]);
 
   return (
     <div className="flex flex-col h-screen">
@@ -73,6 +111,19 @@ function App() {
               )}
             </div>
           )}
+          <div>
+            <button
+              style={{ backgroundColor: 'green', padding: 10, fontSize: 18, borderRadius: 10 }}
+              onClick={connectWithWhatsapp}
+            >
+              Connect to Whatsapp
+            </button>
+          </div>
+          {message && (
+                <div>
+                  <h4 className=" text-green-500">{message}</h4>
+                </div>
+              )}
         </div>
       </div>
     </div>

@@ -18,6 +18,9 @@ const api = {
   sendMessage: (message: string) => {
     ipcRenderer.send('message', message);
   },
+  connectWithWhatsApp: (message:string) => {
+    ipcRenderer.send('connect',message);
+},
   /**
     Here function for AppBar
    */
