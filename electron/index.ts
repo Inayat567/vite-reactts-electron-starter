@@ -5,71 +5,61 @@ import { join } from 'path';
 import { BrowserWindow, app, ipcMain, IpcMainEvent, net } from 'electron';
 import isDev from 'electron-is-dev';
 
-const { makeWASocket } = require("@whiskeysockets/baileys");
-const {
-  useMultiFileAuthState,
-  DisconnectReason,
-} = require("@whiskeysockets/baileys");
-const { Boom } = require("@hapi/boom");
+const { makeWASocket } = require('@whiskeysockets/baileys');
+const { useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
+const { Boom } = require('@hapi/boom');
 
 const height = 600;
 const width = 800;
 
-const connectToWhatsApp = (id:string, message:any) => {
+const connectToWhatsApp = (id: string, message: any) => {
   return new Promise(async (resolve, reject) => {
     try {
-      const { state, saveCreds } = await useMultiFileAuthState(
-        "auth_info_baileys"
-      );
+      const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys');
       const sock = makeWASocket({
         version: [2, 2323, 4],
         printQRInTerminal: true,
-        auth: state,
+        auth: state
       });
 
-      sock.ev.on("creds.update", saveCreds);
-      sock.ev.on("connection.update", async (update:any) => {
+      sock.ev.on('creds.update', saveCreds);
+      sock.ev.on('connection.update', async (update: any) => {
         const { connection, lastDisconnect } = update;
-        if (connection === "close") {
-          let reason = await new Boom(lastDisconnect?.error)?.output
-            ?.statusCode;
+        if (connection === 'close') {
+          let reason = await new Boom(lastDisconnect?.error)?.output?.statusCode;
           if (reason === DisconnectReason.badSession) {
             console.error(`Bad Session, Please Delete /auth and Scan Again`);
-            reject("Failed");
+            reject('Failed');
           } else if (reason === DisconnectReason.connectionClosed) {
-            console.warn("Connection closed, reconnecting....");
+            console.warn('Connection closed, reconnecting....');
             resolve(await connectToWhatsApp(id, message));
           } else if (reason === DisconnectReason.connectionLost) {
-            console.warn("Connection Lost from Server, reconnecting...");
+            console.warn('Connection Lost from Server, reconnecting...');
             resolve(await connectToWhatsApp(id, message));
           } else if (reason === DisconnectReason.connectionReplaced) {
-            console.error(
-              "Connection Replaced, Another New Session Opened, Please Close Current Session First"
-            );
-            reject("Failed");
+            console.error('Connection Replaced, Another New Session Opened, Please Close Current Session First');
+            reject('Failed');
           } else if (reason === DisconnectReason.loggedOut) {
-            console.error(
-              `Device Logged Out, Please Delete /auth and Scan Again.`
-            );
-            reject("Failed");
+            console.error(`Device Logged Out, Please Delete /auth and Scan Again.`);
+            reject('Failed');
           } else if (reason === DisconnectReason.restartRequired) {
-            console.info("Restart Required, Restarting...");
+            console.info('Restart Required, Restarting...');
             resolve(await connectToWhatsApp(id, message));
           } else if (reason === DisconnectReason.timedOut) {
-            console.warn("Connection TimedOut, Reconnecting...");
+            console.warn('Connection TimedOut, Reconnecting...');
             resolve(await connectToWhatsApp(id, message));
           } else {
             console.warn(`Unknown DisconnectReason: ${reason}: ${connection}`);
             resolve(await connectToWhatsApp(id, message));
           }
-        } else if (connection === "open") {
-          console.info("Opened connection");
+        } else if (connection === 'open') {
+          console.info('Opened connection');
           sock.sendMessage(id, message);
-          resolve("Success");
+          resolve('Success');
         }
       });
 
-      sock.ev.on("messages.upsert", async (m:any) => {
+      sock.ev.on('messages.upsert', async (m: any) => {
         console.log(m);
       });
     } catch (e) {
@@ -78,7 +68,6 @@ const connectToWhatsApp = (id:string, message:any) => {
     }
   });
 };
-
 
 function createWindow() {
   // Create the browser window.
@@ -149,7 +138,7 @@ app.on('window-all-closed', () => {
 
 // listen the channel `message` and resend the received message to the renderer process
 ipcMain.on('message', async (event: IpcMainEvent, message: any) => {
-  await connectToWhatsApp("923435339100@s.whatsapp.net", {text: "message"});
+  await connectToWhatsApp('923435339100@s.whatsapp.net', { text: 'message' });
   console.log(message);
   setTimeout(() => event.sender.send('message', 'Message Send from Electron'), 500);
 });
@@ -160,16 +149,16 @@ ipcMain.on('connect', (event, message) => {
 
   const request = net.request(url);
   request.on('response', (response) => {
-    console.log(`STATUS: ${response.statusCode}`)
-    console.log(`HEADERS: ${JSON.stringify(response.headers)}`)
+    console.log(`STATUS: ${response.statusCode}`);
+    console.log(`HEADERS: ${JSON.stringify(response.headers)}`);
     response.on('data', (chunk) => {
-      console.log(`BODY: ${chunk}`)
-    })
+      console.log(`BODY: ${chunk}`);
+    });
     response.on('end', () => {
-      console.log('No more data in response.')
-    })
-  })
-  request.end()
+      console.log('No more data in response.');
+    });
+  });
+  request.end();
 
   setTimeout(() => event.sender.send('connect', 'connected'), 500);
 });
